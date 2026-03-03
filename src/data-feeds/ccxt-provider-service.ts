@@ -38,6 +38,14 @@ interface LoadResult {
 
 const RETRY_BACKOFF_MS = 10_000;
 
+/** Read API credentials from env (e.g. BYBIT_API_KEY, BYBIT_API_SECRET). Do not commit secrets. */
+function exchangeCredentials(exchangeName: string): { apiKey?: string; secret?: string } {
+  const p = exchangeName.toUpperCase().replace(/-/g, "_");
+  const apiKey = process.env[`${p}_API_KEY`];
+  const secret = process.env[`${p}_API_SECRET`];
+  return apiKey || secret ? { apiKey, secret } : {};
+}
+
 // Parameter for exponential decay in time-weighted median price calculation
 const LAMBDA = process.env.MEDIAN_DECAY ? parseFloat(process.env.MEDIAN_DECAY) : 0.00005;
 const TRADES_HISTORY_SIZE = process.env.TRADES_HISTORY_SIZE ? parseInt(process.env.TRADES_HISTORY_SIZE) : 1000; // 1000 is default in ccxt
@@ -74,7 +82,8 @@ export class CcxtFeed implements BaseDataFeed {
     this.logger.log(`Initializing exchanges with trade limit ${TRADES_HISTORY_SIZE}`);
     for (const exchangeName of exchangeToSymbols.keys()) {
       try {
-        const exchange: Exchange = new ccxt.pro[exchangeName]({ newUpdates: true });
+        const creds = exchangeCredentials(exchangeName);
+        const exchange: Exchange = new ccxt.pro[exchangeName]({ newUpdates: true, ...creds });
         exchange.options["tradesLimit"] = TRADES_HISTORY_SIZE;
         this.exchangeByName.set(exchangeName, exchange);
         loadExchanges.push([exchangeName, retry(async () => exchange.loadMarkets(), 2, RETRY_BACKOFF_MS, this.logger)]);
