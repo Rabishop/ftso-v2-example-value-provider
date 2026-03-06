@@ -11,7 +11,8 @@ export class ExampleProviderService {
   }
 
   async getValues(feeds: FeedId[]): Promise<FeedValueData[]> {
-    return this.dataFeed.getValues(feeds);
+    const raw = await this.dataFeed.getValues(feeds);
+    return raw.filter((item): item is FeedValueData => typeof item.value === "number" && !Number.isNaN(item.value));
   }
 
   async getVolumes(feeds: FeedId[], volumeWindow: number): Promise<FeedVolumeData[]> {
